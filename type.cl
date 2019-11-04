@@ -1,7 +1,16 @@
 (defmacro test (form result test)
   `(let ((ans ,form))
      (if (not (,test ans ,result))
-       (format t "TEST FAILED: ~S != ~S" ans ,result))))
+       (format t "TEST FAILED: ~S != ~S~%" ans ,result))))
+
+(defmacro test-error (form condition)
+  `(handler-case
+     (let ((ans ,form))
+        (format t "TEST FAILED: no error (~A), rather ~S~%" ',condition ans))
+     (,condition () T)
+     (condition (e) (format t "TEST FAILED: wrong condition ~A != ~A.~%"
+                            (type-of e) ',condition))))
+
 
 (let ((fns (make-hash-table)))
   (defun fn (name)
@@ -36,13 +45,20 @@
                        (return-from arg-match? nil)))
             (return-from arg-match? (car (last type-spec))))))
 
+(define-condition call-type-mismatch (error)
+  ((form :initarg := :reader form)))
+
+(defmethod print-object ((this call-type-mismatch) out)
+  (format nil "No suitable call for form: ~A" (form this)))
+
 (defun appfn (form)
   (let ((name (first form))
         (args (rest form)))
     (loop for def in (fn name)
           do (let ((rett (arg-match? args (first def))))
                 (if rett (return-from appfn (values (apply (second def) args)
-                                                    rett)))))))
+                                                    rett)))))
+    (error 'call-type-mismatch := form)))
 
 (setf (fn '+ '(String String String))
       (lambda (a b)
@@ -60,7 +76,7 @@
                 "foo bar" string=)
 (test (appfn '(+ "doo " 2))
                 "doo 2" string=)
-(test (appfn '(+ "doo " nil))
-                nil string=)
+(test-error (appfn '(+ "doo " nil))
+                call-type-mismatch)
 (test (appfn '(+ 2 2))
              4 =)
