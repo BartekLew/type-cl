@@ -11,6 +11,10 @@
      (condition (e) (format t "TEST FAILED: wrong condition ~A != ~A.~%"
                             (type-of e) ',condition))))
 
+(defmacro f (args &body body)
+  `(labels ((self ,args ,@body))
+     (lambda (&rest args)
+       (apply #'self args))))
 
 (let ((fns (make-hash-table)))
   (defun fn (name)
@@ -37,6 +41,7 @@
 (setf (check 'Int) #'integerp)
 (setf (check 'String) #'stringp)
 (setf (check 'Number) #'numberp)
+(setf (check 'List) #'listp)
 
 (defun arg-match? (args type-spec)
   (cond ((= (length args) (- (length type-spec) 1))
@@ -68,10 +73,28 @@
       (lambda (a b)
         (format nil "~A~A" a b)))
 
-(setf (fn '+ '(Number Number Number))
-      (lambda (a b)
-        (+ a b)))
 
+(loop for op in '(+ - * /)
+      do (eval `(progn
+                  (setf (fn ',op '(Number Number Number))
+                      (lambda (a b)
+                        (,op a b))))))
+               
+(loop for op in '(+ -)
+      do (eval `(progn
+                  (setf (fn ',op '(List Number))
+                      (f (x &optional (acc 0))
+                        (if (not x) acc
+                          (self (rest x) (,op acc (first x)))))))))
+
+(loop for op in '(* /)
+      do (eval `(progn
+                  (setf (fn ',op '(List Number))
+                      (f (x &optional (acc 1))
+                        (if (not x) acc
+                          (self (rest x) (,op acc (first x)))))))))
+
+               
 (test (appfn '(+ "foo " "bar"))
                 "foo bar" string=)
 (test (appfn '(+ "doo " 2))
@@ -80,3 +103,13 @@
                 call-type-mismatch)
 (test (appfn '(+ 2 2))
              4 =)
+(test (appfn '(- 2 2))
+             0 =)
+(test (appfn '(* 3 2))
+             6 =)
+(test (appfn '(/ 3 2))
+             3/2 =)
+(test (appfn '(+ (3 2 7)))
+             12 =)
+(test (appfn '(* (5 5 10)))
+             250 =)
