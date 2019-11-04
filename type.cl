@@ -31,9 +31,14 @@
 
 (let ((types (make-hash-table)))
   (defun check (name value)
-    (let ((checker (gethash name types)))
+    (let ((checker (gethash (if (listp name)
+                               (first name) 
+                               name)
+                            types)))
       (if (not checker) (error "Type checker not found: ~A." name))
-      (apply checker (list value))))
+      (apply checker (if (listp name)
+                        (cons value (rest name))
+                        (list value)))))
   (defun (setf check) (fn name)
     (if (gethash name types) (error "Type checker already defined: ~A" name))
     (setf (gethash name types) fn)))
@@ -41,7 +46,11 @@
 (setf (check 'Int) #'integerp)
 (setf (check 'String) #'stringp)
 (setf (check 'Number) #'numberp)
-(setf (check 'List) #'listp)
+(setf (check 'List)
+      (lambda (l &optional etype)
+        (and (listp l)
+             (or (not etype)
+                 (not (position-if (lambda (x) (not (check etype x))) l))))))
 
 (defun arg-match? (args type-spec)
   (cond ((= (length args) (- (length type-spec) 1))
@@ -82,19 +91,18 @@
                
 (loop for op in '(+ -)
       do (eval `(progn
-                  (setf (fn ',op '(List Number))
+                  (setf (fn ',op '((List Number) Number))
                       (f (x &optional (acc 0))
                         (if (not x) acc
                           (self (rest x) (,op acc (first x)))))))))
 
 (loop for op in '(* /)
       do (eval `(progn
-                  (setf (fn ',op '(List Number))
+                  (setf (fn ',op '((List Number) Number))
                       (f (x &optional (acc 1))
                         (if (not x) acc
                           (self (rest x) (,op acc (first x)))))))))
 
-               
 (test (appfn '(+ "foo " "bar"))
                 "foo bar" string=)
 (test (appfn '(+ "doo " 2))
@@ -113,3 +121,6 @@
              12 =)
 (test (appfn '(* (5 5 10)))
              250 =)
+(test-error (appfn '(* ("foo" 5 10)))
+             call-type-mismatch)
+ 
