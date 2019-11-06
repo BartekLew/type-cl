@@ -1,23 +1,4 @@
-(defmacro test (form result test)
-  `(let ((ans ,form))
-     (if (not (,test ans ,result))
-       (format t "TEST FAILED: ~S != ~S~%" ans ,result))))
-
-(defmacro test-error (form condition)
-  `(handler-case
-     (let ((ans ,form))
-        (format t "TEST FAILED: no error (~A), rather ~S~%" ',condition ans))
-     (,condition () T)
-     (condition (e) (format t "TEST FAILED: wrong condition ~A != ~A.~%"
-                            (type-of e) ',condition))))
-
-(defun listp+ (l)
-  (and l (listp l)))
-
-(defmacro f (args &body body)
-  `(labels ((self ,args ,@body))
-     (lambda (&rest args)
-       (apply #'self args))))
+(load (merge-pathnames "util.cl" *load-truename*))
 
 (let ((fns (make-hash-table)))
   (defun fn (name)
@@ -51,6 +32,7 @@
 (setf (check 'Any) (lambda (x) (declare (ignore x)) T))
 (setf (check 'Int) #'integerp)
 (setf (check 'String) #'stringp)
+(setf (check 'Char) #'characterp)
 (setf (check 'Number) #'numberp)
 (setf (check 'List)
       (lambda (l &optional etype)
@@ -64,25 +46,29 @@
 (defmethod print-object ((this call-type-mismatch) out)
   (format nil "No suitable call for form: ~A" (form this)))
 
-(defun type-match (form &optional rettype)
+(defun !! (form &optional rettype)
+  (flet ((assert-type (type val)
+           (if (or (not rettype) (check type val)) val
+                 (error 'call-type-mismatch := form))))
   (let ((fargs (rest form))
         (specs (fn (first form))))
     (flet ((exec (spec)
              (let ((types (first spec))
                    (fun (second spec)))
-               (if (and rettype (not (equalp rettype (car (last types)))))
+               (if (/= (- (length types) (length fargs) 1) 0)
                  (error 'call-type-mismatch := form))
-               (funcall #'apply fun
-                     (loop for arg in fargs
-                           for typ in types
-                           collect (cond ((listp+ arg) (type-match arg typ))
-                                         ((check typ arg) arg)
-                                         (T (error 'call-type-mismatch := form))))))))
+               (assert-type rettype
+                     (funcall #'apply fun
+                       (loop for arg in fargs
+                             for typ in types
+                             collect (cond ((listp+ arg) (!! arg typ))
+                                           ((check typ arg) arg)
+                                           (T (error 'call-type-mismatch := form)))))))))
       (loop for spec in specs
             do (handler-case
-                 (return-from type-match (exec spec))
+                 (return-from !! (exec spec))
                  (call-type-mismatch () nil)))
-      (error 'call-type-mismatch := form))))
+      (error 'call-type-mismatch := form)))))
 
 (defun arg-match? (args type-spec)
   (cond ((= (length args) (- (length type-spec) 1))
@@ -99,9 +85,19 @@
       (lambda (a b)
         (format nil "~A~A" a b)))
 
-(setf (fn 'list '(Number Number Number (List Number)))
-      (lambda (&rest args)
-             (apply #'list args)))
+(flet ((match-types (expected args)
+         (cond ((eql expected 'List) args)
+               ((eql (first expected) 'List)
+                 (loop for arg in args
+                       collect (cond ((listp+ arg)
+                                        (!! arg (second expected)))
+                                     ((check (second expected) arg)
+                                        arg)
+                                     (t (error 'call-type-mismatch := args)))))
+               (t (error 'call-type-mismatch := args)))))
+    (setf (fn 'list '(Any Any Any (List Any)))
+          (lambda (&rest args)
+                 (apply #'list args))))
 
 (loop for op in '(+ - * /)
       do (eval `(progn
@@ -123,33 +119,7 @@
                         (if (not x) acc
                           (self (rest x) (,op acc (first x)))))))))
 
-(test (type-match '(+ "foo " "bar"))
-                "foo bar" string=)
-(test (type-match '(+ "doo " 2))
-                "doo 2" string=)
-
-(test-error (type-match '(+ "doo " nil))
-                call-type-mismatch)
-(test (type-match '(+ 2 2))
-             4 =)
-(test (type-match '(- 2 2))
-             0 =)
-(test (type-match '(* 3 2))
-             6 =)
-(test (type-match '(/ 3 2))
-             3/2 =)
-(test (type-match '(+ (list 3 2 7)))
-             12 =)
-(test (type-match '(* (list 5 5 10)))
-             250 =)
-(test-error (type-match '(* (list "foo" 5 10)))
-             call-type-mismatch)
-
-(test (type-match '(* (+ 2 2) (- 4 2))) 8 =)
-
 (setf (fn 'avg '((List Number) Number))
       (lambda (x)
-        (type-match `(/ (+ (list ,@x)) ,(length x)))))
+        (!! `(/ (+ (list ,@x)) ,(length x)))))
 
-(test (type-match '(avg (list 5 10 12)))
-      9 =)
