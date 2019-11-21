@@ -2,9 +2,11 @@
 	`(load (merge-pathnames ,file *load-truename*)))
 
 (defmacro test (form result test)
-  `(let ((ans ,form))
-     (if (not (,test ans ,result))
-       (format t "TEST FAILED: ~S != ~S~%" ans ,result))))
+  `(handler-case
+     (let ((ans ,form))
+       (if (not (,test ans ,result))
+         (format t "TEST FAILED: ~S != ~S~%" ans ,result)))
+     (error (e) (format t "TEST FALED ~S thrown ~S~%" ',form (type-of e)))))
 
 (defmacro test-error (form condition)
   `(handler-case

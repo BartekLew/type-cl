@@ -22,8 +22,11 @@
 (test-error (!! '(* (list "foo" 5 10)))
              call-type-mismatch)
 
-(test-error (!! '(list 1))
-            call-type-mismatch)
+(test (!! '(list 1)) (list 1) equalp)
+
+(test (!! '(list 1 2 3 4 5)) (list 1 2 3 4 5) equalp)
+
+(test (!! '(list)) (list) equalp)
 
 (test (!! '(* (+ 2 2) (- 4 2))) 8 =)
 

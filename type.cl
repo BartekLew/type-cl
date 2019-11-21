@@ -17,6 +17,7 @@
 
 (let ((types (make-hash-table)))
   (defun check (name value)
+    (if (not name) (return-from check value))
     (let ((checker (gethash (if (listp+ name)
                                (first name) 
                                name)
@@ -48,22 +49,26 @@
 
 (defun !! (form &optional rettype)
   (flet ((assert-type (type val)
-           (if (or (not rettype) (check type val)) val
+           (if (check type val) val
                  (error 'call-type-mismatch := form))))
   (let ((fargs (rest form))
         (specs (fn (first form))))
     (flet ((exec (spec)
              (let ((types (first spec))
                    (fun (second spec)))
-               (if (/= (- (length types) (length fargs) 1) 0)
-                 (error 'call-type-mismatch := form))
-               (assert-type rettype
-                     (funcall #'apply fun
-                       (loop for arg in fargs
-                             for typ in types
-                             collect (cond ((listp+ arg) (!! arg typ))
-                                           ((check typ arg) arg)
-                                           (T (error 'call-type-mismatch := form)))))))))
+               (cond ((listp+ types)
+                        (if (/= (- (length types) (length fargs) 1) 0)
+                          (error 'call-type-mismatch := form))
+                        (assert-type rettype
+                            (funcall #'apply fun
+                                (loop for arg in fargs
+                                      for typ in types
+                                      collect (cond ((listp+ arg) (!! arg typ))
+                                                     ((check typ arg) arg)
+                                                     (T (error 'call-type-mismatch := form)))))))
+                     ((functionp types)
+                          (funcall types rettype fargs))
+                     (t (error 'call-type-mismatch := fargs))))))
       (loop for spec in specs
             do (handler-case
                  (return-from !! (exec spec))
@@ -85,17 +90,20 @@
       (lambda (a b)
         (format nil "~A~A" a b)))
 
-(flet ((match-types (expected args)
-         (cond ((eql expected 'List) args)
-               ((eql (first expected) 'List)
-                 (loop for arg in args
-                       collect (cond ((listp+ arg)
-                                        (!! arg (second expected)))
-                                     ((check (second expected) arg)
-                                        arg)
-                                     (t (error 'call-type-mismatch := args)))))
+(labels ((match-arg (expected args)
+           (loop for arg in args
+                 collect (cond ((listp+ arg)
+                                 (!! arg expected))
+                               ((check expected arg)
+                                 arg)
+                               (t (error 'call-type-mismatch := args)))))
+         (match-types (expected args)
+           (cond ((or (not expected) (eql expected 'List))
+                    (match-arg 'Any args))
+                 ((eql (first expected) 'List)
+                         (match-arg (second expected) args))
                (t (error 'call-type-mismatch := args)))))
-    (setf (fn 'list '(Any Any Any (List Any)))
+    (setf (fn 'list #'match-types)
           (lambda (&rest args)
                  (apply #'list args))))
 
