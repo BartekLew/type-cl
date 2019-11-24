@@ -1,5 +1,10 @@
+(defvar *included* nil)
+
 (defmacro include (file)
-	`(load (merge-pathnames ,file *load-truename*)))
+	`(cond ((not (find ,file *included* :test #'string=))
+              (load (merge-pathnames ,file *load-truename*))
+              (setf *included* (cons ,file *included*))
+              T)))
 
 (defmacro test (form result test)
   `(handler-case
