@@ -5,8 +5,8 @@
 (test (!! '(+ "doo " 2))
                 "doo 2" string=)
 
-(test-error (!! '(+ "doo " nil))
-                call-type-mismatch)
+(test (!! '(+ "doo " nil)) "doo NIL" string=)
+
 (test (!! '(+ 2 2))
              4 =)
 (test (!! '(- 2 2))
@@ -34,3 +34,13 @@
       9 =)
 
 (test (apply (converter 'Symbol 'String) '(foo)) "FOO" string=)
+
+(flet ((p5 (x) (+ 5 x))
+       (m2 (x) (* 2 x)))
+  (test (apply (f+ #'m2 #'p5) (list 11)) 32 =))
+
+(test (eql (f+ #'id #'+) #'+) T eql)
+
+(test (detect-type "Foo") 'String eql)
+
+(!! '(+ foo "-bar"))

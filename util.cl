@@ -21,6 +21,8 @@
      (condition (e) (format t "TEST FAILED: wrong condition ~A != ~A.~%"
                             (type-of e) ',condition))))
 
+(defun id(x) x)
+
 (defun listp+ (l)
   (and l (listp l)))
 
@@ -29,3 +31,12 @@
      (lambda (&rest args)
        (apply #'self args))))
 
+(defun f+ (&rest functions)
+  (if (not functions) #'id
+      (let ((revf (reverse (remove #'id functions))))
+        (if (= (length revf) 1) (first revf)
+          (lambda (&rest args)
+            (let ((result (apply (first revf) args)))
+              (loop for f in (rest revf)
+                    do (setf result (apply f (list result))))
+              result))))))

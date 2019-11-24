@@ -1,6 +1,5 @@
 (include "categories.cl")
 
-(setf (check 'Any) (lambda (x) (declare (ignore x)) T))
 (setf (check 'Int) #'integerp)
 (setf (check 'String) #'stringp)
 (setf (check 'Char) #'characterp)
@@ -11,4 +10,4 @@
         (and (listp+ l)
              (or (not etype)
                  (not (position-if (lambda (x) (not (check etype x))) l))))))
-
+(setf (check 'Any) (lambda (x) (declare (ignore x)) T))

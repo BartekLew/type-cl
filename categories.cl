@@ -26,16 +26,21 @@
                         (list value)))))
   (defun (setf check) (fn name)
     (if (gethash name types) (error "Type checker already defined: ~A" name))
-    (setf (gethash name types) fn)))
+    (setf (gethash name types) fn))
+  (defun detect-type (val)
+    (loop for typ being each hash-keys of types
+          do (if (apply (gethash typ types) (list val)) (return-from detect-type typ)))
+    (error 'call-type-mismatch := `(,val))))
 
 (let ((casts (make-hash-table :test #'equalp)))
   (defun converter (from to)
-    (let ((act (gethash `(,from ,to) casts)))
-      (if (not act) (error "conversion not found: ~A -> ~A." from to))
-      act))
+    (if (or (eql from to) (not to) (eql to 'Any)) #'id
+      (let ((act (gethash `(,from ,to) casts)))
+        (if (not act) (error 'call-type-mismatch := (format nil "conversion not found: ~A -> ~A." from to)))
+        act)))
   (defun (setf converter) (action from to)
     (if (gethash `(,from ,to) casts)
-       (error "conversion already defined: A~ -> ~A" from to))
+       (error 'call-type-mismatch := (format nil "conversion already defined: ~A -> ~A" from to)))
     (setf (gethash `(,from ,to) casts) action)))
 
 (defun defprod (name)

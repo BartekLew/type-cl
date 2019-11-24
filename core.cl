@@ -1,11 +1,6 @@
 (include "basic-types.cl")
 (include "conditions.cl")
-
-(defun types-compat? (a b)
-  (or (eql a b)
-      (not a) (not b)
-      (eql a 'Any)
-      (eql b 'Any)))
+(include "converters.cl")
 
 (defun !! (form &optional rettype)
   (let ((fargs (rest form))
@@ -14,15 +9,17 @@
              (let ((types (first spec))
                    (fun (second spec)))
                (cond ((listp+ types)
-                        (if (or (/= (- (length types) (length fargs) 1) 0)
-                                (not (types-compat? rettype (car (last types)))))
+                        (if (/= (- (length types) (length fargs) 1) 0)
                           (error 'call-type-mismatch := form))
-                        (funcall #'apply fun
+                        (funcall #'apply
+                                 (f+ (converter (car (last (first spec))) rettype) fun)
                             (loop for arg in fargs
                                   for typ in types
                                   collect (cond ((listp+ arg) (!! arg typ))
                                                  ((check typ arg) arg)
-                                                 (T (error 'call-type-mismatch := form))))))
+                                                 (T (apply (or (converter (detect-type arg) typ)
+                                                               (error 'call-type-mismatch))
+                                                           (list arg)))))))
                      ((functionp types)
                           (funcall types rettype fargs))
                      (t (error 'call-type-mismatch := fargs))))))
