@@ -32,3 +32,5 @@
 
 (test (!! '(avg (list 5 10 12)))
       9 =)
+
+(test (apply (converter 'Symbol 'String) '(foo)) "FOO" string=)
