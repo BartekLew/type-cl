@@ -40,3 +40,13 @@
               (loop for f in (rest revf)
                     do (setf result (apply f (list result))))
               result))))))
+
+(defun tracel (f lab)
+  (lambda (&rest args)
+    (format T "trace (~A ~{ ~S~})~%" lab args)
+    (let ((ret (apply f args)))
+      (format T ">> ~S ~%" ret)
+      ret)))
+
+
+       

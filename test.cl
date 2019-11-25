@@ -2,6 +2,7 @@
 
 (test (!! '(+ "foo " "bar"))
                 "foo bar" string=)
+
 (test (!! '(+ "doo " 2))
                 "doo 2" string=)
 
@@ -43,4 +44,10 @@
 
 (test (detect-type "Foo") 'String eql)
 
-(!! '(+ foo "-bar"))
+(test (!! '(+ foo "-bar")) "FOO-bar" string=)
+
+(test (apply (simple-vararg 'Symbol '(List Symbol))
+              '((List Symbol) (foo bar baz))) '(foo bar baz) equalp)
+
+(test (apply (simple-vararg 'Int '(List Int))
+              '((List Int) (1 2 (+ 1 2)))) '(1 2 3) equalp)

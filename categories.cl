@@ -34,7 +34,7 @@
 
 (let ((casts (make-hash-table :test #'equalp)))
   (defun converter (from to)
-    (if (or (eql from to) (not to) (eql to 'Any)) #'id
+    (if (or (equalp from to) (not to) (eql to 'Any)) #'id
       (let ((act (gethash `(,from ,to) casts)))
         (if (not act) (error 'call-type-mismatch := (format nil "conversion not found: ~A -> ~A." from to)))
         act)))

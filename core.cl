@@ -21,7 +21,7 @@
                                                                (error 'call-type-mismatch))
                                                            (list arg)))))))
                      ((functionp types)
-                          (funcall types rettype fargs))
+                          (apply fun (funcall types rettype fargs)))
                      (t (error 'call-type-mismatch := fargs))))))
       (loop for spec in specs
             do (handler-case
