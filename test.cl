@@ -51,3 +51,10 @@
 
 (test (apply (simple-vararg 'Int '(List Int))
               '((List Int) (1 2 (+ 1 2)))) '(1 2 3) equalp)
+
+(test (apply (simple-gen-vararg '(List _))
+             '((List Symbol) (a b c))) '(a b c) equalp)
+
+(test-error (apply (simple-gen-vararg '(List _))
+                '(Number (1 2 3)))
+            call-type-mismatch)

@@ -17,15 +17,26 @@
         (error 'call-type-mismatch := `(,expected ,args)))
       (match-same-type-args intype args)))
 
-(labels ((match-types (expected args)
-           (cond ((or (not expected) (eql expected 'List))
-                    (match-same-type-args 'Any args))
-                 ((eql (first expected) 'List)
-                         (match-same-type-args (second expected) args))
-               (t (error 'call-type-mismatch := args)))))
-    (setf (fn 'list #'match-types)
-         (lambda (&rest args)
-                 (apply #'list args))))
+(defun deduce (template val)
+  (if (not val) (return-from deduce 'Any))
+  (if (not (and (listp+ template) (listp+ val)))
+    (error 'call-type-mismatch := `(,template ,val)))
+  (let (ans)
+    (loop for a in template
+          for b in val
+          do (if (eql a '_) (setf ans b)
+               (if (not (equalp a b))
+                 (error 'call-type-mismatch := `(,template ,val)))))
+    ans))
+
+(defun simple-gen-vararg (outtype)
+  (lambda (expected args)
+    (let ((intype (deduce outtype expected)))
+      (match-same-type-args intype args))))
+
+(setf (fn 'list (simple-gen-vararg '(List _)))
+    (lambda (&rest args)
+       (apply #'list args)))
 
 
 (setf (fn '+ (simple-vararg 'String 'String))
