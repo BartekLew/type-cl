@@ -46,6 +46,27 @@
 
 (test (!! '(+ foo "-bar")) "FOO-bar" string=)
 
+(test (check '(Function String Int String) '+) '+ eql)
+(test (apply (!! '(+ 1)) '(3)) 4 eql)
+
+(test (!! '(map (+ 2) (list 7 8 9)) '(List Int)) '(9 10 11) equalp)
+(test (!! '(fold + (list 5 6 8)) 'Int) 19 =)
+
+(setf (fn 'logstr '(String String))
+      (lambda (x)
+        (format nil "++ ~A" x)))
+
+(test (!! '(logstr "a")) "++ a" string=)
+
+(test (apply (par-vararg '(_ _ _)) '(Int (1 2))) '(1 2) equalp)
+(test (apply (par-vararg '(_ _ _)) '(String ("foo" "bar"))) '("foo" "bar") equalp)
+(test (apply (par-vararg '((List _) _)) '(String ((list "foo" "bar")))) '(("foo" "bar")) equalp)
+(test (apply (par-vararg '(_ _ _)) '(String (String String) :typespec)) '(String String) equalp)
+(test (apply (par-vararg '(_ _ (List _))) '((List String) (String String) :typespec)) '(String String) equalp)
+
+(test (!! '(map logstr (list "foo" "bar" "baz")) '(List String)) '("++ foo" "++ bar" "++ baz") equalp)
+(test (!! '(fold + (list "foo-" "bar-" "baz")) 'String) "foo-bar-baz" string=)
+
 (test (apply (simple-vararg 'Symbol '(List Symbol))
               '((List Symbol) (foo bar baz))) '(foo bar baz) equalp)
 

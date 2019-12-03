@@ -11,3 +11,17 @@
              (or (not etype)
                  (not (position-if (lambda (x) (not (check etype x))) l))))))
 (setf (check 'Any) (lambda (x) (declare (ignore x)) T))
+
+(setf (check 'Function)
+      (lambda (name &rest typespec)
+        (let ((f (fn name))
+              (rett (car (last typespec)))
+              (argt (subseq typespec (- (length typespec) 1))))
+          (and f (or (not typespec)
+                     (loop for variant in f
+                           do (cond ((functionp (first variant))
+                                       (if (apply (first variant) (list rett argt))
+                                         (return name)))
+                                    (t (if (equalp typespec (first variant))
+                                        (return name))))))))))
+        

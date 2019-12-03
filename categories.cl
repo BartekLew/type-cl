@@ -1,7 +1,9 @@
+(include "conditions.cl")
+
 (let ((fns (make-hash-table)))
   (defun fn (name)
     (or (gethash name fns)
-        (error "Function not found: ~A." name)))
+        (unknown-function-error name)))
   (defun (setf fn) (def name type-spec)
     (loop for d in (gethash name fns)
           do (if (equalp (first d) type-spec)
@@ -38,8 +40,8 @@
       (let ((act (gethash `(,from ,to) casts)))
         (if (not act) (error 'call-type-mismatch := (format nil "conversion not found: ~A -> ~A." from to)))
         act)))
-  (defun (setf converter) (action from to)
-    (if (gethash `(,from ,to) casts)
+  (defun (setf converter) (action from to &optional opt)
+    (if (and (gethash `(,from ,to) casts) (not (eql opt :override)))
        (error 'call-type-mismatch := (format nil "conversion already defined: ~A -> ~A" from to)))
     (setf (gethash `(,from ,to) casts) action)))
 
