@@ -1,16 +1,19 @@
 (include "categories.cl")
 
-(setf (check 'Int) #'integerp)
-(setf (check 'String) #'stringp)
-(setf (check 'Char) #'characterp)
-(setf (check 'Symbol) #'symbolp)
-(setf (check 'Number) #'numberp)
+(defun basic-typecheck (test)
+  (lambda (val)
+    (if (apply test (list val)) val)))
+
+(setf (check 'Int) (basic-typecheck #'integerp))
+(setf (check 'String) (basic-typecheck #'stringp))
+(setf (check 'Char) (basic-typecheck #'characterp))
+(setf (check 'Symbol) (basic-typecheck #'symbolp))
+(setf (check 'Number) (basic-typecheck #'numberp))
 (setf (check 'List)
       (lambda (l &optional etype)
         (and (listp+ l)
              (or (not etype)
-                 (not (position-if (lambda (x) (not (check etype x))) l))))))
-(setf (check 'Any) (lambda (x) (declare (ignore x)) T))
+                 (not (position-if (lambda (x) (not (check etype x))) l))) l)))
 
 (setf (check 'Function)
       (lambda (name &rest typespec)
@@ -21,7 +24,8 @@
                      (loop for variant in f
                            do (cond ((functionp (first variant))
                                        (if (apply (first variant) (list rett argt))
-                                         (return name)))
+                                         (return (second variant))))
                                     (t (if (equalp typespec (first variant))
-                                        (return name))))))))))
+                                        (return (second variant)))))))))))
         
+(setf (check 'Any) (lambda (x) x))

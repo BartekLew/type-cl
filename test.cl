@@ -6,7 +6,7 @@
 (test (!! '(+ "doo " 2))
                 "doo 2" string=)
 
-(test (!! '(+ "doo " nil)) "doo NIL" string=)
+(test-error (!! '(+ "doo " nil)) call-type-mismatch)
 
 (test (!! '(+ 2 2))
              4 =)
@@ -46,7 +46,9 @@
 
 (test (!! '(+ foo "-bar")) "FOO-bar" string=)
 
-(test (check '(Function String Int String) '+) '+ eql)
+(test (format nil "~A" (check '(Function String Int String) '+))
+      "#<+ (STRING INT STRING)>" string=)
+
 (test (apply (!! '(+ 1)) '(3)) 4 eql)
 
 (test (!! '(map (+ 2) (list 7 8 9)) '(List Int)) '(9 10 11) equalp)

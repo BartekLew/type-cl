@@ -2,11 +2,10 @@
 (include "basic-types.cl")
 
 (defun match-arg (expected arg)
-    (cond ((listp+ arg)
-             (!! arg expected))
-          ((check expected arg)
-             arg)
-          (t (apply (or (converter (detect-type arg) expected)
+    (if (listp+ arg)
+      (!! arg expected)
+      (or (check expected arg)
+          (apply (or (converter (detect-type arg) expected)
                         (error 'call-type-mismatch))
                     (list arg)))))
 
@@ -103,15 +102,11 @@
 (setf (fn 'map (par-vararg '((Function _ _) (List _) (List _))))
       (lambda (f l)
         (loop for x in l
-              collect (if (functionp f) (apply f (list x))
-                        (!! `(,f ,x))))))
+              collect (apply f (list x)))))
 
 (setf (fn 'fold (par-vararg '((Function _ _ _) (List _) _)))
       (lambda (f l)
         (let ((ans (first l)))
           (loop for x in (rest l)
-                do (setf ans
-                         (if (functionp f)
-                           (apply f (list ans x))
-                           (!! `(,f ,ans ,x)))))
+                do (setf ans (apply f (list ans x))))
           ans)))
